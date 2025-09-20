@@ -2,11 +2,11 @@
   "type": "code",
   "modid": "betterfirepit",
   "name": "Better Firepit",
-  "authors": [ "Jameh" ],
+  "authors": [ "Jameh",  "fragtastic" ],
   "description": "A Vintage Story mod to improve the firepit's behaviour",
-  "version": "1.1.6",
-  "NetworkVersion": "1.1.6",
+  "version": "1.1.6-1",
+  "NetworkVersion": "1.1.6-1",
   "dependencies": {
-    "game": "1.20.11"
+    "game": "1.21.1"
   }
 }
