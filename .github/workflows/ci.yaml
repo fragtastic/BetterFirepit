@@ -1,0 +1,56 @@
+name: Build BetterFirepit
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Build Dependencies
+      run: |
+        # Hardcode game version used for build
+        $vs_version = $(Get-Content .\BetterFirepit\modinfo.json | jq -r .dependencies.game)
+        #$vs_version = '1.21.1'
+        $filename = "vs_server_linux-x64_${vs_version}.tar.gz"
+        $folder = if ($vs_version -like "*-rc*") { "unstable" } elseif ($vs_version -like "*-pre*") { "pre" } else { "stable" }
+        $uri = "https://cdn.vintagestory.at/gamefiles/${folder}/${filename}"
+        Invoke-WebRequest -Uri $uri -Out $filename
+        $vsdir = $(mkdir VintageStory)
+        cd VintageStory
+        tar -zxvf "..\$filename" Lib/ Mods/ VintagestoryAPI.dll
+        "VINTAGE_STORY=$($vsdir.FullName)" | Add-Content -Path $Env:GITHUB_ENV -Encoding utf8
+      shell: pwsh
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore Mod Dependencies
+      run: msbuild /t:Restore /p:Configuration=Release
+
+    - name: Build Mod
+      run: msbuild /t:Build /p:Configuration=Release
+      env:
+        VINTAGE_STORY: ${{ env.VINTAGE_STORY }}
+
+    - name: Finalize Artifact
+      run: |
+        $mod_name = $(Get-Content .\BetterFirepit\modinfo.json | jq -r .name)
+        $mod_version = $(Get-Content .\BetterFirepit\modinfo.json | jq -r .version)
+        "ARTIFACT_NAME=${mod_name}-${mod_version}" | Add-Content -Path $Env:GITHUB_ENV -Encoding utf8
+      shell: pwsh
+
+    - name: Upload Mod Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        # NOTE: this is nested into another folder "./BetterFirepit"
+        path: ./BetterFirepit/bin/Release/Mods/BetterFirepit
